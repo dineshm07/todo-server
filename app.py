@@ -1,0 +1,80 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from pymongo import MongoClient
+from bson import ObjectId
+
+app = Flask(__name__)
+CORS(app)
+
+client = MongoClient("mongodb://localhost:27017/")
+db = client["todo_db"]
+users = db["users"]  # Single collection for users & their todos
+
+# Sign Up (Initialize user with an empty todo list)
+@app.route("/signup", methods=["POST"])
+def signup():
+    data = request.json
+    if users.find_one({"username": data["username"]}):
+        return jsonify({"error": "User already exists"}), 400
+    user_data = {
+        "username": data["username"],
+        "password": data["password"],
+        "todos": []  # Empty todo list
+    }
+    users.insert_one(user_data)
+    return jsonify({"message": "User registered"}), 201
+
+# Login (Return user data)
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.json
+    user = users.find_one({"username": data["username"]})
+    if user:
+        user["_id"] = str(user["_id"])  # Convert Mongo ObjectId to string
+        return jsonify(user)
+    return jsonify({"error": "Invalid credentials"}), 400
+
+# Get all todos of a user
+@app.route("/todos/<username>", methods=["GET"])
+def get_todos(username):
+    user = users.find_one({"username": username})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    return jsonify(user["todos"])
+
+# Add a new todo
+@app.route("/todos/<username>", methods=["POST"])
+def add_todo(username):
+    data = request.json
+    new_todo = {
+        "id": str(ObjectId()),  # Convert ObjectId to string
+        "task": data["task"],
+        "completed": False
+    }
+    users.update_one({"username": username}, {"$push": {"todos": new_todo}})
+    return jsonify({"message": "Todo added", "todo": new_todo})
+
+# Toggle (strike-through) a todo
+@app.route("/todos/<username>/<todo_id>", methods=["PUT"])
+def toggle_todo(username, todo_id):
+    user = users.find_one({"username": username})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    updated_todos = []
+    for todo in user["todos"]:
+        if todo["id"] == todo_id:  # Match string ID
+            todo["completed"] = not todo["completed"]
+        updated_todos.append(todo)
+    
+    users.update_one({"username": username}, {"$set": {"todos": updated_todos}})
+    return jsonify({"message": "Todo updated"})
+
+# Delete a todo
+@app.route("/todos/<username>/<todo_id>", methods=["DELETE"])
+def delete_todo(username, todo_id):
+    users.update_one({"username": username}, {"$pull": {"todos": {"id": todo_id}}})
+    return jsonify({"message": "Todo deleted"})
+
+if __name__ == "__main__":
+    app.run(debug=True)
