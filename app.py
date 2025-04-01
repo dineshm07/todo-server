@@ -2,13 +2,27 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 from bson import ObjectId
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+ATLAS_STRING = os.getenv('ATLAS_STRING')
 
 app = Flask(__name__)
 CORS(app)
 
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient(ATLAS_STRING)
 db = client["todo_db"]
 users = db["users"]  # Single collection for users & their todos
+
+try:
+    # Ping MongoDB to check if the connection is successful
+    client.db.command("ping")
+    print("Successfully connected to MongoDB Atlas!")
+except ConnectionError as e:
+    print("Failed to connect to MongoDB Atlas:", e)
+    # You can also raise an exception or handle it as needed
+    raise Exception("Could not connect to MongoDB Atlas. Please check your connection.")
 
 # Sign Up (Initialize user with an empty todo list)
 @app.route("/signup", methods=["POST"])
