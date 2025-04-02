@@ -28,10 +28,11 @@ except ConnectionError as e:
 @app.route("/signup", methods=["POST"])
 def signup():
     data = request.json
-    if users.find_one({"username": data["username"]}):
+    if users.find_one({"useremail": data["useremail"]}):
         return jsonify({"error": "User already exists"}), 400
     user_data = {
         "username": data["username"],
+        "useremail": data["useremail"],
         "password": data["password"],
         "todos": []  # Empty todo list
     }
@@ -42,7 +43,7 @@ def signup():
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
-    user = users.find_one({"username": data["username"]})
+    user = users.find_one({"useremail": data["useremail"]})
     if user:
         user["_id"] = str(user["_id"])  # Convert Mongo ObjectId to string
         return jsonify(user)
