@@ -57,6 +57,14 @@ def get_todos(username):
         return jsonify({"error": "User not found"}), 404
     return jsonify(user["todos"])
 
+@app.route("/profile/<username>", methods=["GET"])
+def get_user(username):
+    user = users.find_one({"username": username})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    user['_id'] = str(user['_id'])
+    return jsonify(user)
+
 # Add a new todo
 @app.route("/todos/<username>", methods=["POST"])
 def add_todo(username):
@@ -90,6 +98,15 @@ def toggle_todo(username, todo_id):
 def delete_todo(username, todo_id):
     users.update_one({"username": username}, {"$pull": {"todos": {"id": todo_id}}})
     return jsonify({"message": "Todo deleted"})
+
+@app.route('/upload/<username>', methods=['POST'])
+def upload_file(username):
+    data = request.get_json()
+    file_base64 = data['file']
+    users.update_one({"username": username}, {"$set": {"profile_pic": file_base64}})
+    return jsonify({"status": "uploaded"})
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
