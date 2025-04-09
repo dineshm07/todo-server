@@ -9,7 +9,7 @@ load_dotenv()
 ATLAS_STRING = os.getenv('ATLAS_STRING')
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 client = MongoClient(ATLAS_STRING)
 db = client["todo_db"]
@@ -101,10 +101,12 @@ def delete_todo(username, todo_id):
 
 @app.route('/upload/<username>', methods=['POST'])
 def upload_file(username):
-    data = request.get_json()
+    data = request.json
     file_base64 = data['file']
     users.update_one({"username": username}, {"$set": {"profile_pic": file_base64}})
-    return jsonify({"status": "uploaded"})
+    user = users.find_one({'username':username})
+    return jsonify(user['profile_pic']) , 200
+
 
 
 
